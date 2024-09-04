@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QuizData } from '../Data/QuizData';
 import QuizResult from './QuizResult';
 
-function Quiz({ userInfo }) {
+function Quiz() {
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [score, setScore] = useState(0);
     const [clickedOption, setClickedOption] = useState(null);
@@ -10,33 +10,30 @@ function Quiz({ userInfo }) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [cameraStream, setCameraStream] = useState(null);
     const [location, setLocation] = useState(null);
-    const [timer, setTimer] = useState(30); // Set initial timer value (30 seconds)
+    const [timer, setTimer] = useState(30); // Initial timer value
 
     const videoRef = useRef(null);
     const timerRef = useRef(null);
 
-    const updateScore = useCallback(() => {
-        if (clickedOption === QuizData[currentQuestion].answer) {
-            setScore((prevScore) => prevScore + 1);
-        }
-    }, [clickedOption, currentQuestion]);
-
-    const changeQuestion = useCallback(() => {
+    const changeQuestion = () => {
         if (clickedOption !== null) {
-            updateScore();
+            if (clickedOption === QuizData[currentQuestion].answer) {
+                setScore(score + 1);
+            }
+
             if (currentQuestion < QuizData.length - 1) {
-                setCurrentQuestion((prevQuestion) => prevQuestion + 1);
+                setCurrentQuestion(currentQuestion + 1);
                 setClickedOption(null);
-                setTimer(30); // Reset the timer for the next question
+                setTimer(30); // Reset timer
             } else {
                 setShowResult(true);
             }
         } else {
             alert('Please select an option before proceeding.');
         }
-    }, [clickedOption, currentQuestion, updateScore]);
+    };
 
-    const startTimer = useCallback(() => {
+    const startTimer = () => {
         timerRef.current = setInterval(() => {
             setTimer((prevTimer) => {
                 if (prevTimer === 1) {
@@ -48,16 +45,16 @@ function Quiz({ userInfo }) {
                 }
             });
         }, 1000);
-    }, [changeQuestion]);
+    };
 
-    const stopCamera = useCallback(() => {
+    const stopCamera = () => {
         if (cameraStream) {
             cameraStream.getTracks().forEach(track => track.stop());
             setCameraStream(null);
         }
-    }, [cameraStream]);
+    };
 
-    const startCamera = useCallback(async () => {
+    const startCamera = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             if (videoRef.current) {
@@ -67,9 +64,9 @@ function Quiz({ userInfo }) {
         } catch (error) {
             console.error("Error accessing camera: ", error);
         }
-    }, []);
+    };
 
-    const getLocation = useCallback(() => {
+    const getLocation = () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -85,7 +82,37 @@ function Quiz({ userInfo }) {
         } else {
             alert("Geolocation is not supported by this browser.");
         }
-    }, []);
+    };
+
+    useEffect(() => {
+        startCamera();
+        getLocation();
+        startTimer();
+
+        document.addEventListener('fullscreenchange', () => {
+            setIsFullscreen(!!document.fullscreenElement);
+
+            if (!document.fullscreenElement) {
+                alert('You have exited fullscreen mode. Please return to fullscreen to continue.');
+            }
+        });
+
+        return () => {
+            stopCamera();
+            clearInterval(timerRef.current);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, [cameraStream]);
+
+    const resetAll = () => {
+        setShowResult(false);
+        setCurrentQuestion(0);
+        setClickedOption(null);
+        setScore(0);
+        stopCamera();
+        setTimer(30); // Reset the timer
+        startTimer(); // Restart the timer
+    };
 
     const toggleFullscreen = () => {
         if (isFullscreen) {
@@ -93,41 +120,7 @@ function Quiz({ userInfo }) {
         } else {
             document.documentElement.requestFullscreen();
         }
-        setIsFullscreen(!isFullscreen);
     };
-
-    const handleFullscreenChange = useCallback(() => {
-        const isCurrentlyFullscreen = !!document.fullscreenElement;
-        setIsFullscreen(isCurrentlyFullscreen);
-
-        if (!isCurrentlyFullscreen) {
-            alert('You have exited fullscreen mode. Please return to fullscreen to continue.');
-        }
-    }, []);
-
-    useEffect(() => {
-        startCamera();
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        getLocation();
-        startTimer();
-
-        return () => {
-            stopCamera();
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
-            clearInterval(timerRef.current);
-        };
-    }, [startCamera, stopCamera, handleFullscreenChange, getLocation, startTimer]);
-
-    const resetAll = useCallback(() => {
-        setShowResult(false);
-        setCurrentQuestion(0);
-        setClickedOption(null);
-        setScore(0);
-        setLocation(null);
-        stopCamera();
-        setTimer(30); // Reset the timer
-        startTimer(); // Restart the timer
-    }, [stopCamera, startTimer]);
 
     return (
         <div>
