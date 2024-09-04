@@ -15,6 +15,27 @@ function Quiz({ userInfo }) {
     const videoRef = useRef(null);
     const timerRef = useRef(null);
 
+    const updateScore = useCallback(() => {
+        if (clickedOption === QuizData[currentQuestion].answer) {
+            setScore((prevScore) => prevScore + 1);
+        }
+    }, [clickedOption, currentQuestion]);
+
+    const changeQuestion = useCallback(() => {
+        if (clickedOption !== null) {
+            updateScore();
+            if (currentQuestion < QuizData.length - 1) {
+                setCurrentQuestion((prevQuestion) => prevQuestion + 1);
+                setClickedOption(null);
+                setTimer(30); // Reset the timer for the next question
+            } else {
+                setShowResult(true);
+            }
+        } else {
+            alert('Please select an option before proceeding.');
+        }
+    }, [clickedOption, currentQuestion, updateScore]);
+
     const startTimer = useCallback(() => {
         timerRef.current = setInterval(() => {
             setTimer((prevTimer) => {
@@ -27,7 +48,7 @@ function Quiz({ userInfo }) {
                 }
             });
         }, 1000);
-    }, []);
+    }, [changeQuestion]);
 
     const stopCamera = useCallback(() => {
         if (cameraStream) {
@@ -66,38 +87,6 @@ function Quiz({ userInfo }) {
         }
     }, []);
 
-    const changeQuestion = useCallback(() => {
-        if (clickedOption !== null) {
-            updateScore();
-            if (currentQuestion < QuizData.length - 1) {
-                setCurrentQuestion(currentQuestion + 1);
-                setClickedOption(null);
-                setTimer(30); // Reset the timer for the next question
-            } else {
-                setShowResult(true);
-            }
-        } else {
-            alert('Please select an option before proceeding.');
-        }
-    }, [clickedOption, currentQuestion]);
-
-    const updateScore = useCallback(() => {
-        if (clickedOption === QuizData[currentQuestion].answer) {
-            setScore(score + 1);
-        }
-    }, [clickedOption, currentQuestion, score]);
-
-    const resetAll = () => {
-        setShowResult(false);
-        setCurrentQuestion(0);
-        setClickedOption(null);
-        setScore(0);
-        setLocation(null);
-        stopCamera();
-        setTimer(30); // Reset the timer
-        startTimer(); // Restart the timer
-    };
-
     const toggleFullscreen = () => {
         if (isFullscreen) {
             document.exitFullscreen();
@@ -111,7 +100,6 @@ function Quiz({ userInfo }) {
         const isCurrentlyFullscreen = !!document.fullscreenElement;
         setIsFullscreen(isCurrentlyFullscreen);
 
-        // Show an alert if the user exits fullscreen
         if (!isCurrentlyFullscreen) {
             alert('You have exited fullscreen mode. Please return to fullscreen to continue.');
         }
@@ -121,8 +109,6 @@ function Quiz({ userInfo }) {
         startCamera();
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         getLocation();
-
-        // Start the timer when the quiz begins
         startTimer();
 
         return () => {
@@ -131,6 +117,17 @@ function Quiz({ userInfo }) {
             clearInterval(timerRef.current);
         };
     }, [startCamera, stopCamera, handleFullscreenChange, getLocation, startTimer]);
+
+    const resetAll = useCallback(() => {
+        setShowResult(false);
+        setCurrentQuestion(0);
+        setClickedOption(null);
+        setScore(0);
+        setLocation(null);
+        stopCamera();
+        setTimer(30); // Reset the timer
+        startTimer(); // Restart the timer
+    }, [stopCamera, startTimer]);
 
     return (
         <div>
