@@ -100,7 +100,7 @@ function Quiz() {
         return () => {
             stopCamera();
             clearInterval(timerRef.current);
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('fullscreenchange');
         };
     }, [cameraStream]);
 
