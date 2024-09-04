@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { QuizData } from '../Data/QuizData';
 import QuizResult from './QuizResult';
 
@@ -15,22 +15,7 @@ function Quiz({ userInfo }) {
     const videoRef = useRef(null);
     const timerRef = useRef(null);
 
-    useEffect(() => {
-        startCamera();
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        getLocation();
-
-        // Start the timer when the quiz begins
-        startTimer();
-
-        return () => {
-            stopCamera();
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
-            clearInterval(timerRef.current);
-        };
-    }, []);
-
-    const startTimer = () => {
+    const startTimer = useCallback(() => {
         timerRef.current = setInterval(() => {
             setTimer((prevTimer) => {
                 if (prevTimer === 1) {
@@ -42,9 +27,46 @@ function Quiz({ userInfo }) {
                 }
             });
         }, 1000);
-    };
+    }, []);
 
-    const changeQuestion = () => {
+    const stopCamera = useCallback(() => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            setCameraStream(null);
+        }
+    }, [cameraStream]);
+
+    const startCamera = useCallback(async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                setCameraStream(stream);
+            }
+        } catch (error) {
+            console.error("Error accessing camera: ", error);
+        }
+    }, []);
+
+    const getLocation = useCallback(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setLocation({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    });
+                },
+                (error) => {
+                    console.error("Error getting location: ", error);
+                }
+            );
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    }, []);
+
+    const changeQuestion = useCallback(() => {
         if (clickedOption !== null) {
             updateScore();
             if (currentQuestion < QuizData.length - 1) {
@@ -57,13 +79,13 @@ function Quiz({ userInfo }) {
         } else {
             alert('Please select an option before proceeding.');
         }
-    };
+    }, [clickedOption, currentQuestion]);
 
-    const updateScore = () => {
+    const updateScore = useCallback(() => {
         if (clickedOption === QuizData[currentQuestion].answer) {
             setScore(score + 1);
         }
-    };
+    }, [clickedOption, currentQuestion, score]);
 
     const resetAll = () => {
         setShowResult(false);
@@ -85,7 +107,7 @@ function Quiz({ userInfo }) {
         setIsFullscreen(!isFullscreen);
     };
 
-    const handleFullscreenChange = () => {
+    const handleFullscreenChange = useCallback(() => {
         const isCurrentlyFullscreen = !!document.fullscreenElement;
         setIsFullscreen(isCurrentlyFullscreen);
 
@@ -93,44 +115,22 @@ function Quiz({ userInfo }) {
         if (!isCurrentlyFullscreen) {
             alert('You have exited fullscreen mode. Please return to fullscreen to continue.');
         }
-    };
+    }, []);
 
-    const startCamera = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                setCameraStream(stream);
-            }
-        } catch (error) {
-            console.error("Error accessing camera: ", error);
-        }
-    };
+    useEffect(() => {
+        startCamera();
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        getLocation();
 
-    const stopCamera = () => {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            setCameraStream(null);
-        }
-    };
+        // Start the timer when the quiz begins
+        startTimer();
 
-    const getLocation = () => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setLocation({
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
-                    });
-                },
-                (error) => {
-                    console.error("Error getting location: ", error);
-                }
-            );
-        } else {
-            alert("Geolocation is not supported by this browser.");
-        }
-    };
+        return () => {
+            stopCamera();
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            clearInterval(timerRef.current);
+        };
+    }, [startCamera, stopCamera, handleFullscreenChange, getLocation, startTimer]);
 
     return (
         <div>
