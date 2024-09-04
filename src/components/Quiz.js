@@ -15,12 +15,15 @@ function Quiz() {
     const videoRef = useRef(null);
     const timerRef = useRef(null);
 
+    const updateScore = () => {
+        if (clickedOption === QuizData[currentQuestion].answer) {
+            setScore(score + 1);
+        }
+    };
+
     const changeQuestion = () => {
         if (clickedOption !== null) {
-            if (clickedOption === QuizData[currentQuestion].answer) {
-                setScore(score + 1);
-            }
-
+            updateScore();
             if (currentQuestion < QuizData.length - 1) {
                 setCurrentQuestion(currentQuestion + 1);
                 setClickedOption(null);
@@ -89,20 +92,23 @@ function Quiz() {
         getLocation();
         startTimer();
 
-        document.addEventListener('fullscreenchange', () => {
-            setIsFullscreen(!!document.fullscreenElement);
+        const handleFullscreenChange = () => {
+            const isCurrentlyFullscreen = !!document.fullscreenElement;
+            setIsFullscreen(isCurrentlyFullscreen);
 
-            if (!document.fullscreenElement) {
+            if (!isCurrentlyFullscreen) {
                 alert('You have exited fullscreen mode. Please return to fullscreen to continue.');
             }
-        });
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
 
         return () => {
             stopCamera();
             clearInterval(timerRef.current);
-            document.removeEventListener('fullscreenchange');
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
-    }, [cameraStream]);
+    }, [startCamera, getLocation, startTimer, stopCamera]);
 
     const resetAll = () => {
         setShowResult(false);
