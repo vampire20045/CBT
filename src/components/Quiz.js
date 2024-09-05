@@ -69,6 +69,7 @@ function Quiz() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play();
         setCameraStream(stream);
       }
     } catch (error) {
@@ -108,18 +109,15 @@ function Quiz() {
   }, [isFullscreen]);
 
   useEffect(() => {
-    if (isFullscreen) {
-      startCamera(); // Start the camera only after entering fullscreen
-      getLocation(); // Get location after entering fullscreen
-    }
-
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isCurrentlyFullscreen);
 
-      if (!isCurrentlyFullscreen && cameraStream) {
-        stopCamera(); // Stop camera if user exits fullscreen
-        setCameraError(true);
+      if (isCurrentlyFullscreen) {
+        startCamera(); // Start camera when entering fullscreen
+        getLocation(); // Get location
+      } else {
+        stopCamera(); // Stop camera when exiting fullscreen
       }
     };
 
@@ -130,7 +128,7 @@ function Quiz() {
       stopTimer();
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [isFullscreen, startCamera, getLocation, stopCamera, stopTimer, cameraStream]);
+  }, [isFullscreen, startCamera, getLocation, stopCamera, stopTimer]);
 
   const resetAll = () => {
     setShowResult(false);
