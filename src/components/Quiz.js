@@ -11,6 +11,7 @@ function Quiz() {
   const [cameraStream, setCameraStream] = useState(null);
   const [location, setLocation] = useState(null);
   const [timer, setTimer] = useState(30);
+  const [cameraError, setCameraError] = useState(false);
 
   const videoRef = useRef(null);
   const timerRef = useRef(null);
@@ -71,6 +72,7 @@ function Quiz() {
         setCameraStream(stream);
       }
     } catch (error) {
+      setCameraError(true);
       alert('Unable to access camera. Please check permissions.');
       console.error('Error accessing camera:', error);
     }
@@ -95,25 +97,29 @@ function Quiz() {
     }
   }, []);
 
-  const toggleFullscreen = () => {
-    if (isFullscreen) {
-      document.exitFullscreen();
+  const toggleFullscreen = useCallback(async () => {
+    if (!isFullscreen) {
+      await document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
     } else {
-      document.documentElement.requestFullscreen();
+      document.exitFullscreen();
+      setIsFullscreen(false);
     }
-  };
+  }, [isFullscreen]);
 
   useEffect(() => {
-    startCamera();
-    getLocation();
-    startTimer();
+    if (isFullscreen) {
+      startCamera(); // Start the camera only after entering fullscreen
+      getLocation(); // Get location after entering fullscreen
+    }
 
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isCurrentlyFullscreen);
 
-      if (!isCurrentlyFullscreen) {
-        alert('You have exited fullscreen mode. Please return to fullscreen to continue.');
+      if (!isCurrentlyFullscreen && cameraStream) {
+        stopCamera(); // Stop camera if user exits fullscreen
+        setCameraError(true);
       }
     };
 
@@ -124,7 +130,7 @@ function Quiz() {
       stopTimer();
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [startCamera, getLocation, startTimer, stopCamera, stopTimer]);
+  }, [isFullscreen, startCamera, getLocation, stopCamera, stopTimer, cameraStream]);
 
   const resetAll = () => {
     setShowResult(false);
@@ -167,7 +173,8 @@ function Quiz() {
               {isFullscreen ? 'Exit Fullscreen' : 'Go Fullscreen'}
             </button>
             <div className="camera-feed">
-              <video ref={videoRef} autoPlay></video>
+              <video ref={videoRef} autoPlay muted playsInline></video>
+              {cameraError && <p>Error accessing camera</p>}
             </div>
             {location && (
               <div className="location-info">
